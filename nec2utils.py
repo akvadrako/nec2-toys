@@ -130,6 +130,31 @@ class Model:
 		gw += sci(radius) + "\n"
 		return gw
 
+	def gh(self, tag, segments, pitch,height, xzr1,yzr1, xzr2,yzr2, wireRadius):
+		'''
+		NEC2 calls it "Turns Spacing" and "Helix Length"; I
+		prefer to say "Pitch" and "Height", respectively.
+
+		Height is how tall the structure is if you stand it up on a
+		table. It has nothing to do with wire length. Zero height
+		generates a flat spiral, non-zero height generates a spring.
+		Negative height generates a left hand turn.
+
+		Pitch is how far apart the wires are per turn; in spirals
+		that's like cylinder number on a disk, for springs, that's
+		height per turn. Thus, n_turns = height / spacing
+
+		xzrN == yzRN ? circular : ellipsoid
+
+		r1 == r2 ? cylindrical : tapered
+
+		'''
+		gh = "GH" + dec(tag) + dec(segments)
+		gh += sci(pitch) + sci(height)
+		gh += sci(xzr1) + sci(yzr1) + sci(xzr2) + sci(yzr2)
+		gh += sci(wireRadius) + "\n"
+		return gh
+
 	def ga(self, tag, segments, arcRadius, startAngle, endAngle, wireRadius):
 		''' Return the line for a GA card, an arc in the X-Z plane with its center at the origin
 		'''
