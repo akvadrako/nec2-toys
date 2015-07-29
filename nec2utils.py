@@ -7,7 +7,7 @@ Utility code for generating antenna geometry files in nec2 card stack format
 '''
 
 import math
-
+import copy
 
 # =======================================================================================================
 # Field formatting functions (i.e. "columns" in punchcard-speak)
@@ -91,6 +91,7 @@ class Model:
 		self.tag        = 0
 		self.EX_tag     = 0
 		self.EX_segment = 0
+		self.endpoint = Point(0,0,0)
 
 		self.velocityfactor = velocityfactor
 		if (wavelength and frequency):
@@ -250,6 +251,7 @@ class Model:
 		self.wires += self.gw(self.tag, segments, pt1.x, pt1.y, pt1.z, pt2.x, pt2.y, pt2.z, self.wireRadius)
 		self.flushTransformBuffer()
 		self.middle = math.trunc(segments/2) + 1
+		self.endpoint = copy.copy(pt2)
 		return self
 
 	def addArc(self, segments, radius, start, end, rotate, translate):
@@ -283,12 +285,12 @@ class Model:
 		translating or rotate it, and return this object to facilitate chaining
 		'''
 		self.tag += 1
-		r = properties['length'] / math.pi / 2
+		hr = properties['length'] / math.pi / 2
 		height = properties['height']
 		pitch = properties['height']
-		self.wires += self.gh(self.tag, segments, pitch, height, r, r, r, r, self.wireRadius)
+		self.wires += self.gh(self.tag, segments, pitch, height, hr, hr, hr, hr, self.wireRadius)
 		self.flushTransformBuffer()
-		# Move the arc to where it's supposed to be (note the tag #)
+		# Move the helix to where it's supposed to be (note the tag #)
 		r = rotate
 		t = translate
 		self.transforms += self.gm(r.rx, r.ry, r.rz, t.x, t.y, t.z, self.tag)
