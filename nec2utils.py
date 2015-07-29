@@ -1,5 +1,6 @@
 '''
 Copyright 2012 Will Snook (http://willsnook.com)
+Copyright 2015 Chris Kuethe (https://github.com/ckuethe)
 MIT License
 
 Utility code for generating antenna geometry files in nec2 card stack format
@@ -81,7 +82,7 @@ class Rotation:
 # =======================================================================================================
 
 class Model:
-	def __init__(self, wireRadius):
+	def __init__(self, wireRadius, wavelength=None, frequency=None, velocityfactor=1.0):
 		''' Prepare the model with the given wire radius
 		'''
 		self.wires      = ""
@@ -90,6 +91,19 @@ class Model:
 		self.tag        = 0
 		self.EX_tag     = 0
 		self.EX_segment = 0
+
+		self.velocityfactor = velocityfactor
+		if (wavelength and frequency):
+			self.wavelength = wavelength
+			self.frequency = frequency
+		elif wavelength:
+			self.wavelength = wavelength
+			self.frequency = self.velocityfactor * 3e8 / self.wavelength
+		elif frequency:
+			self.frequency = frequency
+			self.wavelength = self.velocityfactor * 3e8 / self.frequency
+		else:
+			self.wavelength = self.frequency = None
 
 		self.transformBuffer = ''
 
