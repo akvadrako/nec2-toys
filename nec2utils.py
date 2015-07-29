@@ -47,6 +47,18 @@ def deg(degrees):
 	'''
 	return degrees * 1.0
 
+def AWG(n):
+	'''
+	convert awg to wire diameter in m.
+	AWG 0000 (4/0) .. 0 (1/0) maps to -3..0
+	'''
+	if type(n) is not int:
+		raise TypeError('AWG must be an integer')
+	if n not in range(-3, 41):
+		raise ValueError('AWG must be from -3 to 40')
+	# https://en.wikipedia.org/wiki/American_wire_gauge
+	return math.exp(2.1104 - 0.11594*n) * 1e-3
+
 # =======================================================================================================
 # Output conversions from meters back to inches
 # =======================================================================================================
