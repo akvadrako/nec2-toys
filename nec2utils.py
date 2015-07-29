@@ -185,7 +185,7 @@ class Model:
 		'''
 		GPFLAG = 0  # Ground plane flag. 0 means no ground plane present.
 		ge = "GE"
-		ge += dec(GPFLAG) + "\n"
+		ge += dec(GPFLAG) + dec(0) + sci(0) + sci(0) + sci(0) + sci(0) + sci(0) + sci(0) + sci(0) + "\n"
 		return ge
 
 	def fr(self, start, stepSize, stepCount):
@@ -213,7 +213,7 @@ class Model:
 		F2 = 0.0      # Imaginary part of voltage
 		ex = "EX"
 		ex += dec(I1) + dec(I2) + dec(I3) + dec(I4)
-		ex += sci(F1) + sci(F2) + "\n"
+		ex += sci(F1) + sci(F2) + sci(0) + sci(0) + sci(0) + sci(0) + "\n"
 		return ex
 
 
@@ -282,6 +282,12 @@ class Model:
 		'''
 		self.EX_tag     = self.tag
 		self.EX_segment = self.middle
+
+	def feedAtStart(self):
+		''' Attach the EX card feedpoint to the first segment of the element that was most recently created
+		'''
+		self.EX_tag     = self.tag
+		self.EX_segment = 1
 
 
 	def getText(self, start, stepSize, stepCount):
