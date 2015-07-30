@@ -7,6 +7,13 @@ Experiments in Python-assisted nec2 antenna modeling
 Goals, History, and Current Status
 ----------------------------------
 
+Update 2015-07-29:
+
+Chris Kuethe has taken over maintainership of this tool. Release 0.2.0 adds
+support for helixes.
+
+Originally penned by Will Snook:
+
 I started this project because I wanted to modify Kent Britain's 2m "Cheap
 Yagi" to work with a local repeater. Kent's published 2m Yagi designs are tuned
 for use near 145 MHz with a relatively narrow usable bandwidth.  Since I wanted
@@ -91,9 +98,11 @@ Credits
 -------
 
 Kent Britain created the "Cheap Yagi" design (http://www.wa5vjb.com/references.html)
+Will Snook is the author of the original tool from which this was forked.
 
 
-Author & Copyright
-------------------
+Authors & Copyright
+-------------------
 
 Copyright (c) 2012 Will Snook (http://willsnook.com)
+Copyright (c) 2015 Chris Kuethe (https://github.com/ckuethe)
