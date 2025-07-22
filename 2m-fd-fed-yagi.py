@@ -12,7 +12,7 @@ from nec2utils import *
 # Plan for a 2m yagi fed with folded dipole
 # =======================================================================================================
 
-'''
+r'''
 Notes:
   '+' marks a boundary between wire elements
   'X' marks the feedpoint
@@ -40,7 +40,7 @@ Notes:
 
 '''
 
-targetMHz        = 146.310
+targetMHz        = 146.000
 correctionFactor = 0.9374   # Trial and error correcion constant to account for velocity factor, etc
 wavelength       = m((300.0 * correctionFactor) / targetMHz)
 
@@ -53,7 +53,7 @@ Y0      = inch(5.0 + (3.0/8.0))
 Z0      = inch(36.0)
 
 # Reflector
-Y1 = inch(0)
+Y1 = mm(0)
 E  = inch(40.0 + (2.0/8.0))
 
 
@@ -77,7 +77,7 @@ d  = Point( a1.x, Y0,         Z0)
 e1 = Point( E/2.0, Y1, Z0)
 e2 = Point(-E/2.0, Y1, Z0)
 
-wireRadius = inch(1.0/16.0) # radius for a 1/8" wire
+wireRadius = mm(10)
 segs       = 41
 arcSegs    = 15
 arcStart   = deg(90)
