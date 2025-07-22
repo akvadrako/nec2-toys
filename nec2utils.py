@@ -1,11 +1,14 @@
 '''
 Copyright 2012 Will Snook (http://willsnook.com)
+Copyright 2015 Chris Kuethe (https://github.com/ckuethe)
+Copyright 2025 Devin Bayer (https://doubly.so/dev)
 MIT License
 
 Utility code for generating antenna geometry files in nec2 card stack format
 '''
 
 import math
+import copy
 
 SCALE = 1000
 
@@ -54,6 +57,18 @@ def deg(degrees):
     '''
     return degrees * 1.0
 
+def AWG(n):
+    '''
+    convert awg to wire diameter in m.
+    AWG 0000 (4/0) .. 0 (1/0) maps to -3..0
+    '''
+    if type(n) is not int:
+        raise TypeError('AWG must be an integer')
+    if n not in range(-3, 41):
+        raise ValueError('AWG must be from -3 to 40')
+    # https://en.wikipedia.org/wiki/American_wire_gauge
+    return math.exp(2.1104 - 0.11594*n) * 1e-3
+
 # =======================================================================================================
 # Output conversions from meters back to inches
 # =======================================================================================================
@@ -89,7 +104,7 @@ class Rotation:
 # =======================================================================================================
 
 class Model:
-    def __init__(self, wireRadius):
+    def __init__(self, wireRadius, wavelength=None, frequency=None, velocityfactor=1.0):
         ''' Prepare the model with the given wire radius
         '''
         self.wires      = ""
@@ -98,6 +113,20 @@ class Model:
         self.tag        = 0
         self.EX_tag     = 0
         self.EX_segment = 0
+        self.endpoint = Point(0,0,0)
+
+        self.velocityfactor = velocityfactor
+        if (wavelength and frequency):
+            self.wavelength = wavelength
+            self.frequency = frequency
+        elif wavelength:
+            self.wavelength = wavelength
+            self.frequency = self.velocityfactor * 3e8 / self.wavelength
+        elif frequency:
+            self.frequency = frequency
+            self.wavelength = self.velocityfactor * 3e8 / self.frequency
+        else:
+            self.wavelength = self.frequency = None
 
         self.transformBuffer = ''
 
@@ -123,6 +152,35 @@ class Model:
         gw += length(x2) + length(y2) + length(z2)
         gw += length(radius) + "\n"
         return gw
+    
+    def gs(self):
+        ''' Scale Structure Dimensions '''
+        return "GS" + dec(0) + dec(0) + dec(SCALE) + "\n"
+
+    def gh(self, tag, segments, pitch,height, xzr1,yzr1, xzr2,yzr2, wireRadius):
+        '''
+        NEC2 calls it "Turns Spacing" and "Helix Length"; I
+        prefer to say "Pitch" and "Height", respectively.
+
+        Height is how tall the structure is if you stand it up on a
+        table. It has nothing to do with wire length. Zero height
+        generates a flat spiral, non-zero height generates a spring.
+        Negative height generates a left hand turn.
+
+        Pitch is how far apart the wires are per turn; in spirals
+        that's like cylinder number on a disk, for springs, that's
+        height per turn. Thus, n_turns = height / spacing
+
+        xzrN == yzRN ? circular : ellipsoid
+
+        r1 == r2 ? cylindrical : tapered
+
+        '''
+        gh = "GH" + dec(tag) + dec(segments)
+        gh += sci(pitch) + sci(height)
+        gh += sci(xzr1) + sci(yzr1) + sci(xzr2) + sci(yzr2)
+        gh += sci(wireRadius) + "\n"
+        return gh
 
     def ga(self, tag, segments, arcRadius, startAngle, endAngle, wireRadius):
         ''' Return the line for a GA card, an arc in the X-Z plane with its center at the origin
@@ -154,12 +212,8 @@ class Model:
         '''
         GPFLAG = 0  # Ground plane flag. 0 means no ground plane present.
         ge = "GE"
-        ge += dec(GPFLAG) + "\n"
+        ge += dec(GPFLAG) + dec(0) + sci(0) + sci(0) + sci(0) + sci(0) + sci(0) + sci(0) + sci(0) + "\n"
         return ge
-    
-    def gs(self):
-        ''' Scale Structure Dimensions '''
-        return "GS" + dec(0) + dec(0) + dec(SCALE) + "\n"
 
     def fr(self, start, stepSize, stepCount):
         ''' Define the frequency range to be modeled
@@ -186,9 +240,8 @@ class Model:
         F2 = 0.0      # Imaginary part of voltage
         ex = "EX"
         ex += dec(I1) + dec(I2) + dec(I3) + dec(I4)
-        ex += sci(F1) + sci(F2) + "\n"
+        ex += sci(F1) + sci(F2) + sci(0) + sci(0) + sci(0) + sci(0) + "\n"
         return ex
-
 
     def rp(self):
         ''' Card to initiate calculation and output of radiation pattern.
@@ -223,6 +276,7 @@ class Model:
         self.wires += self.gw(self.tag, segments, pt1.x, pt1.y, pt1.z, pt2.x, pt2.y, pt2.z, self.wireRadius)
         self.flushTransformBuffer()
         self.middle = math.trunc(segments/2) + 1
+        self.endpoint = copy.copy(pt2)
         return self
 
     def addArc(self, segments, radius, start, end, rotate, translate):
@@ -250,12 +304,44 @@ class Model:
         self.transformBuffer += self.gm(-r.rx,   0.0,   0.0,  0.0,  0.0,  0.0, self.tag+1)
         return self
 
+    def addHelix(self, segments, pt1, properties, rotate=None, translate=None):
+        ''' Append a helix...
+        Also does housekeeping such as incrementing the tag number,
+        translating or rotate it, and return this object to facilitate chaining
+        '''
+        self.tag += 1
+        hr = properties['length'] / math.pi / 2
+        height = properties['height']
+        pitch = properties['height']
+        self.wires += self.gh(self.tag, segments, pitch, height, hr, hr, hr, hr, self.wireRadius)
+        self.flushTransformBuffer()
+        # Move the helix to where it's supposed to be (note the tag #)
+        r = rotate
+        t = translate
+        self.transforms += self.gm(r.rx, r.ry, r.rz, t.x, t.y, t.z, self.tag)
+        # Queue up the transforms to roll back the translation and rotation, using multiple gm cards to ensure
+        # that it really works (see GM card documentation about order of operations). This will restore the normal
+        # coordinate system if any elements are appended to the model after this arc, but the use of tag = n+1
+        # means it could break the nec2 parser if it's included without a GW or GA that actually uses tag n+1. The
+        # point of this buffering nonsense is to avoid triggering that parsing problem.
+        self.transformBuffer += self.gm(  0.0,   0.0,   0.0, -t.x, -t.y, -t.z, self.tag+1)
+        self.transformBuffer += self.gm(  0.0,   0.0, -r.rz,  0.0,  0.0,  0.0, self.tag+1)
+        self.transformBuffer += self.gm(  0.0, -r.ry,   0.0,  0.0,  0.0,  0.0, self.tag+1)
+        self.transformBuffer += self.gm(-r.rx,   0.0,   0.0,  0.0,  0.0,  0.0, self.tag+1)
+        self.middle = math.trunc(segments/2) + 1
+        return self
+
     def feedAtMiddle(self):
         ''' Attach the EX card feedpoint to the middle segment of the element that was most recently created
         '''
         self.EX_tag     = self.tag
         self.EX_segment = self.middle
 
+    def feedAtStart(self):
+        ''' Attach the EX card feedpoint to the first segment of the element that was most recently created
+        '''
+        self.EX_tag     = self.tag
+        self.EX_segment = 1
 
     def getText(self, start, stepSize, stepCount):
         footer = self.ge()
